@@ -85,6 +85,7 @@ uint32_t LabelRosenfeld::solvePackTable(uint32_t* T, uint32_t ne) {
         } else {
             T[e] = ++na;
         }
+        //std::cout << e << std::endl;
     }
     return na;
 }
@@ -407,18 +408,15 @@ void LabelRosenfeld::labeliseParallele4C(Region32& region32) {
   }
   //build all my ne_threads
   std::cerr << ne << std::endl;
-  uint32_t *T=(uint32_t*)malloc(sizeof(uint32_t)*ne);
-  int tmp2=0;
+  uint32_t *T=(uint32_t*)malloc(sizeof(uint32_t)*ne+1);
   int tmp3=0;
   for(int j=0;j<region32.Regions.size();j++){
-    for(int tmp=0;tmp<ne_threads[j]+1;tmp++){
-      T[tmp+tmp3]=region32.Regions[tmp2].T[tmp+tmp3];
+    for(int tmp=0;tmp<=ne_threads[j];tmp++){
+      T[tmp+tmp3]=region32.Regions[j].T[tmp]+tmp3;
     }
-    tmp3=ne_threads[j];
+    tmp3=ne_threads[j]+1;
   }
-  /* R�solution des �quivalences */
    region32.neFinal = solvePackTable(T, ne);
-
   // /* Mise � jour sur l'image */
    updateLabel(region32.E, i0, i1, j0, j1, T);
   //
