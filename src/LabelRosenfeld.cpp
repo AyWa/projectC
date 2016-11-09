@@ -324,14 +324,14 @@ void LabelRosenfeld::labeliseSequetiel4C(Region32& region32) {
         ne = lineLabeling4C(region32.X, i, region32.E, region32.T, largeur, ne);
     }
 
-    /* R�solution des �quivalences */
-    region32.neFinal = solvePackTable(region32.T, ne);
-
-    /* Mise � jour sur l'image */
-    updateLabel(region32.E, i0, i1, j0, j1, region32.T);
-
-    /* M�morisation du nombre d'�tiquettes */
-    region32.ne = ne;
+    // /* R�solution des �quivalences */
+    // region32.neFinal = solvePackTable(region32.T, ne);
+    //
+    // /* Mise � jour sur l'image */
+    // updateLabel(region32.E, i0, i1, j0, j1, region32.T);
+    //
+    // /* M�morisation du nombre d'�tiquettes */
+    // region32.ne = ne;
 }
 void LabelRosenfeld::labeliseSequetiel8C(Region32& region32) {
 
@@ -373,24 +373,13 @@ void LabelRosenfeld::labeliseSequetiel8C(Region32& region32) {
 void LabelRosenfeld::labeliseParallele4C(Region32& region32) {
   /* Declaration des variables */
   int i;
-  uint32_t ne;// nombre de label different
-
+  //uint32_t ne;// nombre de label different
+  uint32_t *ne_threads; //nombre de label thread
   int i0 			= 	region32.i0;//hauteur debut
   int i1 			= 	region32.i1;//hauteur fin
   int j0 			= 	region32.j0;//largeur debut
   int j1 			= 	region32.j1;//largeur fin
   int largeur 	= 	j1-j0; //largeur
-  //region32.Regions liste des sous regions: Region32
-  std::cout << region32.Regions.size() << std::endl;
-  /* Netoyage des pr�c�dents traitements */
-  region32.cleanRegions32();
-  ne = 0;
-  //on fait une boucle pour chaque region: on va paralleliser cette boucle
-  #pragma omp parallel for
-  for(int nbRegion=0;nbRegion<region32.Regions.size();nbRegion++){
-    //nos thread pour gerer chaque region
-  }
-
   /* Premier etiquetage */
   //region32.X
   //i0 hauteur debut
@@ -398,20 +387,30 @@ void LabelRosenfeld::labeliseParallele4C(Region32& region32) {
   //region32.T
   //largeur Largeur image
   //ne nombre de label different
-  ne = line0Labeling4C(region32.X, i0, region32.E, region32.T, largeur, ne);
-  for (i=i0+1; i<i1; i++) {
-      ne = lineLabeling4C(region32.X, i, region32.E, region32.T, largeur, ne);
-      //std::cout << ne << std::endl;
+  ne_threads=(uint32_t*)malloc(sizeof(uint32_t)*region32.Regions.size());
+  //region32.Regions liste des sous regions: Region32
+  /* Netoyage des pr�c�dents traitements */
+  region32.cleanRegions32();
+  //ne = 0;
+  //on fait une boucle pour chaque region: on va paralleliser cette boucle
+  #pragma omp parallel for
+  for(int nbRegion=0;nbRegion<region32.Regions.size();nbRegion++){
+    ne_threads[nbRegion]=0;
+    ne_threads[nbRegion] = line0Labeling4C(region32.Regions[nbRegion].X, region32.Regions[nbRegion].i0, region32.Regions[nbRegion].E, region32.Regions[nbRegion].T, largeur, ne_threads[nbRegion]);
+    //nos thread pour gerer chaque region
+    for (i=region32.Regions[nbRegion].i0+1; i<region32.Regions[nbRegion].i1; i++) {
+        ne_threads[nbRegion] = lineLabeling4C(region32.Regions[nbRegion].X, i, region32.Regions[nbRegion].E, region32.Regions[nbRegion].T, largeur, ne_threads[nbRegion]);
+    }
   }
-
+  //build all my ne_threads
   /* R�solution des �quivalences */
-  region32.neFinal = solvePackTable(region32.T, ne);
-
-  /* Mise � jour sur l'image */
-  updateLabel(region32.E, i0, i1, j0, j1, region32.T);
-
-  /* M�morisation du nombre d'�tiquettes */
-  region32.ne = ne;
+  // region32.neFinal = solvePackTable(region32.T, ne);
+  //
+  // /* Mise � jour sur l'image */
+  // updateLabel(region32.E, i0, i1, j0, j1, region32.T);
+  //
+  // /* M�morisation du nombre d'�tiquettes */
+  // region32.ne = ne;
 }
 
 void LabelRosenfeld::labeliseParallele8C(Region32& region32) {

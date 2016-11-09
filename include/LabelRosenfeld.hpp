@@ -7,6 +7,8 @@
 #include <stdint.h>
 #include <vector>
 #include <omp.h>
+#include <stdlib.h>
+#include <stdio.h>
 using namespace std;
 
 class LabelRosenfeld {
