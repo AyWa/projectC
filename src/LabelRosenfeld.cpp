@@ -424,6 +424,7 @@ void LabelRosenfeld::labeliseParallele4C(Region32& region32) {
   //parcourir la ligne
   //s'il y a un pixelon regarde en haut
   int x,y=0;
+  int aa,zz=0;
   for(int j=0;j<largeur;j++){
     x = region32.Regions[1].E[region32.Regions[1].i0][j];
     if(x){
@@ -432,7 +433,11 @@ void LabelRosenfeld::labeliseParallele4C(Region32& region32) {
       if(y){
         std::cout << "y" << y << " hauteur: "<<region32.Regions[0].i1-1 <<std::endl;
         //std::cout << "root:"<<  << std::endl;
-        SetRoot(region32.T,FindRoot(region32.T,x),y);
+        aa=region32.Regions[1].T[x];
+        zz=region32.Regions[0].T[y];
+        std::cout << " aa " << aa <<  std::endl;
+        std::cout << " zz " << zz <<  std::endl;
+        if(aa != zz) SetRoot(region32.T,FindRoot(region32.Regions[0].T,zz),FindRoot(region32.Regions[1].T,aa));
       }
     }
   }
