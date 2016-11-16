@@ -395,30 +395,50 @@ void LabelRosenfeld::labeliseParallele4C(Region32& region32) {
   ne = 0;
   //on fait une boucle pour chaque region: on va paralleliser cette boucle
   for(int nbRegion=0;nbRegion<region32.Regions.size();nbRegion++){
-    ne_threads[nbRegion]=0;
-    ne_threads[nbRegion] = line0Labeling4C(region32.Regions[nbRegion].X, region32.Regions[nbRegion].i0, region32.Regions[nbRegion].E, region32.Regions[nbRegion].T, largeur, ne_threads[nbRegion]);
+    region32.Regions[nbRegion].cleanRegions32();
+    region32.Regions[nbRegion].ne=0;
+    region32.Regions[nbRegion].ne = line0Labeling4C(region32.Regions[nbRegion].X, region32.Regions[nbRegion].i0, region32.Regions[nbRegion].E, region32.Regions[nbRegion].T, largeur, region32.Regions[nbRegion].ne);
     //nos thread pour gerer chaque region
     for (i=region32.Regions[nbRegion].i0+1; i<region32.Regions[nbRegion].i1; i++) {
-        ne_threads[nbRegion] = lineLabeling4C(region32.Regions[nbRegion].X, i, region32.Regions[nbRegion].E, region32.Regions[nbRegion].T, largeur, ne_threads[nbRegion]);
+        region32.Regions[nbRegion].ne = lineLabeling4C(region32.Regions[nbRegion].X, i, region32.Regions[nbRegion].E, region32.Regions[nbRegion].T, largeur, region32.Regions[nbRegion].ne);
     }
     std::cout << "/* message */" << std::endl;
-    std::cout <<  ne_threads[nbRegion]<< std::endl;
+    std::cout <<  region32.Regions[nbRegion].ne<< std::endl;
     std::cout << region32.Regions[nbRegion].ne << std::endl;
-    ne+=ne_threads[nbRegion];
+    region32.ne+=region32.Regions[nbRegion].ne;
   }
   //build all my ne_threads
-  std::cerr << ne << std::endl;
-  uint32_t *T=(uint32_t*)malloc(sizeof(uint32_t)*ne+1);
+  std::cout << region32.ne << std::endl;
+  //uint32_t *T=(uint32_t*)malloc(sizeof(uint32_t)*region32.ne+1);
+  region32.initialiseTables(region32.ne);
   int tmp3=0;
   for(int j=0;j<region32.Regions.size();j++){
-    for(int tmp=0;tmp<=ne_threads[j];tmp++){
-      T[tmp+tmp3]=region32.Regions[j].T[tmp]+tmp3;
+    for(int tmp=0;tmp<=region32.Regions[j].ne;tmp++){
+      //T[tmp+tmp3]=region32.Regions[j].T[tmp]+tmp3;
+      region32.T[tmp+tmp3]=region32.Regions[j].T[tmp]+tmp3;
     }
-    tmp3=ne_threads[j]+1;
+    tmp3+=region32.Regions[j].ne;
   }
-   region32.neFinal = solvePackTable(T, ne);
+  //probleme de ligne
+  //update region32.T
+  //parcourir la ligne
+  //s'il y a un pixelon regarde en haut
+  int x,y=0;
+  for(int j=0;j<largeur;j++){
+    x = region32.Regions[1].E[region32.Regions[1].i0][j];
+    if(x){
+      std::cout << "x"<< x << " hauteur: "<<region32.Regions[1].i0 << std::endl;
+      y=region32.Regions[0].E[region32.Regions[0].i1-1][j];
+      if(y){
+        std::cout << "y" << y << " hauteur: "<<region32.Regions[0].i1-1 <<std::endl;
+        //std::cout << "root:"<<  << std::endl;
+        SetRoot(region32.T,FindRoot(region32.T,x),y);
+      }
+    }
+  }
+  region32.neFinal = solvePackTable(region32.T, region32.ne);
   // /* Mise � jour sur l'image */
-   updateLabel(region32.E, i0, i1, j0, j1, T);
+  updateLabel(region32.E, i0, i1, j0, j1, region32.T);
   //
   // /* M�morisation du nombre d'�tiquettes */
   // region32.ne = ne;
