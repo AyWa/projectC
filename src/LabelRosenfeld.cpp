@@ -400,10 +400,12 @@ void LabelRosenfeld::labeliseParallele4C(Region32& region32) {
   int j1 			= 	region32.j1;//largeur fin
   int largeur 	= 	j1-j0; //largeur
   region32.cleanRegions32();
-  std::thread first (&LabelRosenfeld::bar,this,&region32.Regions[0]);     // spawn new thread that calls foo()
-  std::thread second (&LabelRosenfeld::bar,this,&region32.Regions[1]);  // spawn new thread that calls bar(0)
-  first.join();                // pauses until first finishes
-  second.join();               // pauses until second finishes
+  std::vector<std::thread> myThreads;
+  for(int nbRegion=0;nbRegion<region32.Regions.size();nbRegion++){
+    myThreads.push_back(std::thread(&LabelRosenfeld::bar,this,&region32.Regions[nbRegion]));
+  }
+  // spawn new thread that calls bar(0)
+  // pauses until second finishes
   //std::cout << "thread completed.\n";
   /* Premier etiquetage */
   //region32.X
@@ -417,6 +419,7 @@ void LabelRosenfeld::labeliseParallele4C(Region32& region32) {
   ne = 0;
   //on fait une boucle pour chaque region: on va paralleliser cette boucle
   for(int nbRegion=0;nbRegion<region32.Regions.size();nbRegion++){
+    myThreads[nbRegion].join();
     region32.ne+=region32.Regions[nbRegion].ne;
   }
   //std::cout << region32.ne << '\n';
@@ -437,18 +440,20 @@ void LabelRosenfeld::labeliseParallele4C(Region32& region32) {
   //s'il y a un pixelon regarde en haut
   int e2,e4=0;
   int r2,r4,epsillon=0;
-  for(int j=0;j<largeur;j++){
-    e2 = region32.Regions[1].E[region32.Regions[1].i0][j];
-    if(e2){
-      e4=region32.Regions[0].E[region32.Regions[0].i1-1][j];
-      if(e4){
-        r2 = FindRoot(region32.Regions[1].T, e2);
-        r4 = FindRoot(region32.Regions[0].T, e4);
-        epsillon = ui32MinNonNul2(r2, r4);
-        //std::cout << "r2 "<<r2<<" r4 "<<r4<<" epsi "<<epsillon << '\n';
-        if (e2 != epsillon) SetRoot(region32.T, e2, epsillon);
-        if (e4 != epsillon) SetRoot(region32.T, e4, epsillon);
-        region32.E[region32.Regions[1].i0][j] = epsillon;
+  for(int i=0;i<region32.Regions.size()-1;i++){
+    for(int j=0;j<largeur;j++){
+      e2 = region32.Regions[i+1].E[region32.Regions[i+1].i0][j];
+      if(e2){
+        e4=region32.Regions[i].E[region32.Regions[i].i1-1][j];
+        if(e4){
+          r2 = FindRoot(region32.Regions[i+1].T, e2);
+          r4 = FindRoot(region32.Regions[i].T, e4);
+          epsillon = ui32MinNonNul2(r2, r4);
+          //std::cout << "r2 "<<r2<<" r4 "<<r4<<" epsi "<<epsillon << '\n';
+          if (e2 != epsillon) SetRoot(region32.T, e2, epsillon);
+          if (e4 != epsillon) SetRoot(region32.T, e4, epsillon);
+          region32.E[region32.Regions[i+1].i0][j] = epsillon;
+        }
       }
     }
   }
