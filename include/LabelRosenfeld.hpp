@@ -9,6 +9,7 @@
 #include <omp.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <thread>
 using namespace std;
 
 class LabelRosenfeld {
@@ -34,7 +35,7 @@ protected :
     uint32_t lineLabeling8C(unsigned char **X, int i, uint32_t **E, uint32_t* T, int largeur, uint32_t ne);
 
 public :
-
+    void bar(Region32* region32);
     /* Fonctions */
     /* Constructeur par defaut */
     LabelRosenfeld();

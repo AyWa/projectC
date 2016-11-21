@@ -368,7 +368,25 @@ void LabelRosenfeld::labeliseSequetiel8C(Region32& region32) {
 }
 
 
-
+void LabelRosenfeld::bar(Region32* region32)
+{
+  int i0 			= 	region32->i0;//hauteur debut
+  int i1 			= 	region32->i1;//hauteur fin
+  int j0 			= 	region32->j0;//largeur debut
+  int j1 			= 	region32->j1;//largeur fin
+  int largeur 	= 	j1-j0; //largeur
+  std::cout << largeur << '\n';
+  region32->cleanRegions32();
+  region32->ne=0;
+  region32->ne = line0Labeling4C(region32->X, region32->i0, region32->E, region32->T, largeur, region32->ne);
+  //nos thread pour gerer chaque region
+  for (int i=region32->i0+1; i<region32->i1; i++) {
+      region32->ne = lineLabeling4C(region32->X, i, region32->E, region32->T, largeur, region32->ne);
+  }
+  //std::cout << "/* message */" << std::endl;
+  std::cout <<  region32->ne<< std::endl;
+  //std::cout << region32->ne << std::endl;
+}
 
 /* Labelise en parall�le */
 void LabelRosenfeld::labeliseParallele4C(Region32& region32) {
@@ -381,6 +399,12 @@ void LabelRosenfeld::labeliseParallele4C(Region32& region32) {
   int j0 			= 	region32.j0;//largeur debut
   int j1 			= 	region32.j1;//largeur fin
   int largeur 	= 	j1-j0; //largeur
+  region32.cleanRegions32();
+  std::thread first (&LabelRosenfeld::bar,this,&region32.Regions[0]);     // spawn new thread that calls foo()
+  std::thread second (&LabelRosenfeld::bar,this,&region32.Regions[1]);  // spawn new thread that calls bar(0)
+  first.join();                // pauses until first finishes
+  second.join();               // pauses until second finishes
+  //std::cout << "thread completed.\n";
   /* Premier etiquetage */
   //region32.X
   //i0 hauteur debut
@@ -388,33 +412,21 @@ void LabelRosenfeld::labeliseParallele4C(Region32& region32) {
   //region32.T
   //largeur Largeur image
   //ne nombre de label different
-  ne_threads=(uint32_t*)malloc(sizeof(uint32_t)*region32.Regions.size());
   //region32.Regions liste des sous regions: Region32
   /* Netoyage des pr�c�dents traitements */
-  region32.cleanRegions32();
   ne = 0;
   //on fait une boucle pour chaque region: on va paralleliser cette boucle
   for(int nbRegion=0;nbRegion<region32.Regions.size();nbRegion++){
-    region32.Regions[nbRegion].cleanRegions32();
-    region32.Regions[nbRegion].ne=0;
-    region32.Regions[nbRegion].ne = line0Labeling4C(region32.Regions[nbRegion].X, region32.Regions[nbRegion].i0, region32.Regions[nbRegion].E, region32.Regions[nbRegion].T, largeur, region32.Regions[nbRegion].ne);
-    //nos thread pour gerer chaque region
-    for (i=region32.Regions[nbRegion].i0+1; i<region32.Regions[nbRegion].i1; i++) {
-        region32.Regions[nbRegion].ne = lineLabeling4C(region32.Regions[nbRegion].X, i, region32.Regions[nbRegion].E, region32.Regions[nbRegion].T, largeur, region32.Regions[nbRegion].ne);
-    }
-    std::cout << "/* message */" << std::endl;
-    std::cout <<  region32.Regions[nbRegion].ne<< std::endl;
-    std::cout << region32.Regions[nbRegion].ne << std::endl;
     region32.ne+=region32.Regions[nbRegion].ne;
   }
+  //std::cout << region32.ne << '\n';
   //build all my ne_threads
-  std::cout << region32.ne << std::endl;
+  //std::cout << region32.ne << std::endl;
   //uint32_t *T=(uint32_t*)malloc(sizeof(uint32_t)*region32.ne+1);
   region32.initialiseTables(region32.ne);
   int tmp3=0;
   for(int j=0;j<region32.Regions.size();j++){
     for(int tmp=0;tmp<=region32.Regions[j].ne;tmp++){
-      //T[tmp+tmp3]=region32.Regions[j].T[tmp]+tmp3;
       region32.T[tmp+tmp3]=region32.Regions[j].T[tmp]+tmp3;
     }
     tmp3+=region32.Regions[j].ne;
@@ -423,30 +435,26 @@ void LabelRosenfeld::labeliseParallele4C(Region32& region32) {
   //update region32.T
   //parcourir la ligne
   //s'il y a un pixelon regarde en haut
-  int x,y=0;
-  int aa,zz=0;
+  int e2,e4=0;
+  int r2,r4,epsillon=0;
   for(int j=0;j<largeur;j++){
-    x = region32.Regions[1].E[region32.Regions[1].i0][j];
-    if(x){
-      std::cout << "x"<< x << " hauteur: "<<region32.Regions[1].i0 << std::endl;
-      y=region32.Regions[0].E[region32.Regions[0].i1-1][j];
-      if(y){
-        std::cout << "y" << y << " hauteur: "<<region32.Regions[0].i1-1 <<std::endl;
-        //std::cout << "root:"<<  << std::endl;
-        aa=region32.Regions[1].T[x];
-        zz=region32.Regions[0].T[y];
-        std::cout << " aa " << aa <<  std::endl;
-        std::cout << " zz " << zz <<  std::endl;
-        if(aa != zz) SetRoot(region32.T,FindRoot(region32.Regions[0].T,zz),FindRoot(region32.Regions[1].T,aa));
+    e2 = region32.Regions[1].E[region32.Regions[1].i0][j];
+    if(e2){
+      e4=region32.Regions[0].E[region32.Regions[0].i1-1][j];
+      if(e4){
+        r2 = FindRoot(region32.Regions[1].T, e2);
+        r4 = FindRoot(region32.Regions[0].T, e4);
+        epsillon = ui32MinNonNul2(r2, r4);
+        //std::cout << "r2 "<<r2<<" r4 "<<r4<<" epsi "<<epsillon << '\n';
+        if (e2 != epsillon) SetRoot(region32.T, e2, epsillon);
+        if (e4 != epsillon) SetRoot(region32.T, e4, epsillon);
+        region32.E[region32.Regions[1].i0][j] = epsillon;
       }
     }
   }
   region32.neFinal = solvePackTable(region32.T, region32.ne);
   // /* Mise � jour sur l'image */
   updateLabel(region32.E, i0, i1, j0, j1, region32.T);
-  //
-  // /* M�morisation du nombre d'�tiquettes */
-  // region32.ne = ne;
 }
 
 void LabelRosenfeld::labeliseParallele8C(Region32& region32) {
