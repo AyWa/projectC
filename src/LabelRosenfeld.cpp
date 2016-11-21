@@ -375,7 +375,6 @@ void LabelRosenfeld::bar(Region32* region32)
   int j0 			= 	region32->j0;//largeur debut
   int j1 			= 	region32->j1;//largeur fin
   int largeur 	= 	j1-j0; //largeur
-  std::cout << largeur << '\n';
   region32->cleanRegions32();
   region32->ne=0;
   region32->ne = line0Labeling4C(region32->X, region32->i0, region32->E, region32->T, largeur, region32->ne);
@@ -383,9 +382,30 @@ void LabelRosenfeld::bar(Region32* region32)
   for (int i=region32->i0+1; i<region32->i1; i++) {
       region32->ne = lineLabeling4C(region32->X, i, region32->E, region32->T, largeur, region32->ne);
   }
-  //std::cout << "/* message */" << std::endl;
-  std::cout <<  region32->ne<< std::endl;
-  //std::cout << region32->ne << std::endl;
+}
+void LabelRosenfeld::yolo(Region32* region32,int i)
+{
+  int i0 			= 	region32->i0;//hauteur debut
+  int i1 			= 	region32->i1;//hauteur fin
+  int j0 			= 	region32->j0;//largeur debut
+  int j1 			= 	region32->j1;//largeur fin
+  int largeur 	= 	j1-j0; //largeur
+  int epsillon,e2,e4,r2,r4=0;
+  for(int j=0;j<largeur;j++){
+    e2 = region32->Regions[i+1].E[region32->Regions[i+1].i0][j];
+    if(e2){
+      e4=region32->Regions[i].E[region32->Regions[i].i1-1][j];
+      if(e4){
+        r2 = FindRoot(region32->Regions[i+1].T, e2);
+        r4 = FindRoot(region32->Regions[i].T, e4);
+        epsillon = ui32MinNonNul2(r2, r4);
+        //std::cout << "r2 "<<r2<<" r4 "<<r4<<" epsi "<<epsillon << '\n';
+        if (e2 != epsillon) SetRoot(region32->T, e2, epsillon);
+        if (e4 != epsillon) SetRoot(region32->T, e4, epsillon);
+        region32->E[region32->Regions[i+1].i0][j] = epsillon;
+      }
+    }
+  }
 }
 
 /* Labelise en parall�le */
@@ -401,6 +421,7 @@ void LabelRosenfeld::labeliseParallele4C(Region32& region32) {
   int largeur 	= 	j1-j0; //largeur
   region32.cleanRegions32();
   std::vector<std::thread> myThreads;
+  std::vector<std::thread> myThreadsLigne;
   for(int nbRegion=0;nbRegion<region32.Regions.size();nbRegion++){
     myThreads.push_back(std::thread(&LabelRosenfeld::bar,this,&region32.Regions[nbRegion]));
   }
@@ -441,21 +462,10 @@ void LabelRosenfeld::labeliseParallele4C(Region32& region32) {
   int e2,e4=0;
   int r2,r4,epsillon=0;
   for(int i=0;i<region32.Regions.size()-1;i++){
-    for(int j=0;j<largeur;j++){
-      e2 = region32.Regions[i+1].E[region32.Regions[i+1].i0][j];
-      if(e2){
-        e4=region32.Regions[i].E[region32.Regions[i].i1-1][j];
-        if(e4){
-          r2 = FindRoot(region32.Regions[i+1].T, e2);
-          r4 = FindRoot(region32.Regions[i].T, e4);
-          epsillon = ui32MinNonNul2(r2, r4);
-          //std::cout << "r2 "<<r2<<" r4 "<<r4<<" epsi "<<epsillon << '\n';
-          if (e2 != epsillon) SetRoot(region32.T, e2, epsillon);
-          if (e4 != epsillon) SetRoot(region32.T, e4, epsillon);
-          region32.E[region32.Regions[i+1].i0][j] = epsillon;
-        }
-      }
-    }
+    myThreadsLigne.push_back(std::thread(&LabelRosenfeld::yolo,this,&region32,i));
+  }
+  for(int nbRegion=0;nbRegion<region32.Regions.size()-1;nbRegion++){
+    myThreadsLigne[nbRegion].join();
   }
   region32.neFinal = solvePackTable(region32.T, region32.ne);
   // /* Mise � jour sur l'image */
