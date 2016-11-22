@@ -79,6 +79,7 @@ uint32_t LabelRosenfeld::solvePackTable(uint32_t* T, uint32_t ne) {
     uint32_t na; // ancetre packe
 
     na = 0;
+    std::cout << "yolo: "<<ne << '\n';
     for (e=1; e<=ne; e++) {
         if (e != T[e]) {
             T[e] = T[T[e]];
@@ -385,24 +386,24 @@ void LabelRosenfeld::bar(Region32* region32)
 }
 void LabelRosenfeld::yolo(Region32* region32,int i)
 {
-  int i0 			= 	region32->i0;//hauteur debut
+  int i0 			= 	region32->Regions[i+1].i0;//hauteur debut
   int i1 			= 	region32->i1;//hauteur fin
   int j0 			= 	region32->j0;//largeur debut
   int j1 			= 	region32->j1;//largeur fin
   int largeur 	= 	j1-j0; //largeur
   int epsillon,e2,e4,r2,r4=0;
   for(int j=0;j<largeur;j++){
-    e2 = region32->Regions[i+1].E[region32->Regions[i+1].i0][j];
+    e2 = region32->Regions[i+1].E[i0][j];
     if(e2){
-      e4=region32->Regions[i].E[region32->Regions[i].i1-1][j];
+      e4=region32->Regions[i].E[i0-1][j];
       if(e4){
-        r2 = FindRoot(region32->Regions[i+1].T, e2);
-        r4 = FindRoot(region32->Regions[i].T, e4);
+        r2 = FindRoot(region32->T, e2);
+        r4 = FindRoot(region32->T, e4);
         epsillon = ui32MinNonNul2(r2, r4);
         //std::cout << "r2 "<<r2<<" r4 "<<r4<<" epsi "<<epsillon << '\n';
         if (e2 != epsillon) SetRoot(region32->T, e2, epsillon);
         if (e4 != epsillon) SetRoot(region32->T, e4, epsillon);
-        region32->E[region32->Regions[i+1].i0][j] = epsillon;
+        region32->E[i0][j] = epsillon;
       }
     }
   }
@@ -422,35 +423,23 @@ void LabelRosenfeld::labeliseParallele4C(Region32& region32) {
   region32.cleanRegions32();
   std::vector<std::thread> myThreads;
   std::vector<std::thread> myThreadsLigne;
+  //lancement des threads pour l'etiquetage
   for(int nbRegion=0;nbRegion<region32.Regions.size();nbRegion++){
     myThreads.push_back(std::thread(&LabelRosenfeld::bar,this,&region32.Regions[nbRegion]));
   }
-  // spawn new thread that calls bar(0)
-  // pauses until second finishes
-  //std::cout << "thread completed.\n";
-  /* Premier etiquetage */
-  //region32.X
-  //i0 hauteur debut
-  //region32.E
-  //region32.T
-  //largeur Largeur image
-  //ne nombre de label different
-  //region32.Regions liste des sous regions: Region32
-  /* Netoyage des pr�c�dents traitements */
-  ne = 0;
-  //on fait une boucle pour chaque region: on va paralleliser cette boucle
+  region32.ne = 0;
+  //on join les threads et builds le ne total
   for(int nbRegion=0;nbRegion<region32.Regions.size();nbRegion++){
     myThreads[nbRegion].join();
     region32.ne+=region32.Regions[nbRegion].ne;
+    std::cout << region32.Regions[nbRegion].ne<< '\n';
   }
-  //std::cout << region32.ne << '\n';
-  //build all my ne_threads
-  //std::cout << region32.ne << std::endl;
-  //uint32_t *T=(uint32_t*)malloc(sizeof(uint32_t)*region32.ne+1);
+  //build le region32 ne
   region32.initialiseTables(region32.ne);
-  int tmp3=0;
+  int tmp3=0; //variable pour incrementer les ne
   for(int j=0;j<region32.Regions.size();j++){
-    for(int tmp=0;tmp<=region32.Regions[j].ne;tmp++){
+    for(int tmp=1;tmp<=region32.Regions[j].ne;tmp++){
+      //updateTable(region32.T,tmp+tmp3,region32.Regions[j].T[tmp]+tmp3);
       region32.T[tmp+tmp3]=region32.Regions[j].T[tmp]+tmp3;
     }
     tmp3+=region32.Regions[j].ne;
