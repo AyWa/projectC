@@ -368,8 +368,7 @@ void LabelRosenfeld::labeliseSequetiel8C(Region32& region32) {
 }
 
 
-void LabelRosenfeld::bar(Region32* region32)
-{
+void LabelRosenfeld::labeliseThread4C(Region32* region32){
   int i0 			= 	region32->i0;//hauteur debut
   int i1 			= 	region32->i1;//hauteur fin
   int j0 			= 	region32->j0;//largeur debut
@@ -384,8 +383,7 @@ void LabelRosenfeld::bar(Region32* region32)
   }
 }
 
-void LabelRosenfeld::bar8C(Region32* region32)
-{
+void LabelRosenfeld::labeliseThread8C(Region32* region32){
   int i0 			= 	region32->i0;//hauteur debut
   int i1 			= 	region32->i1;//hauteur fin
   int j0 			= 	region32->j0;//largeur debut
@@ -400,7 +398,7 @@ void LabelRosenfeld::bar8C(Region32* region32)
   }
 }
 
-void LabelRosenfeld::merger4C(Region32* region32, int i) {
+void LabelRosenfeld::lignedif4C(Region32* region32, int i) {
   int i0 			= 	region32->Regions[i+1].i0;//hauteur debut
   int i1 			= 	region32->i1;//hauteur fin
   int j0 			= 	region32->j0;//largeur debut
@@ -417,14 +415,13 @@ void LabelRosenfeld::merger4C(Region32* region32, int i) {
         epsillon = ui32MinNonNul2(r2, r4);
 
         if (e2 != epsillon) SetRoot(region32->T, e2, epsillon);
-        //if (e4 != epsillon) SetRoot(region32->T, e4, epsillon); //CODE INUTILE ?
         region32->E[i0][j] = epsillon;
       }
     }
   }
 }
 
-void LabelRosenfeld::merger8C(Region32* region32, int i) {
+void LabelRosenfeld::lignedif8C(Region32* region32, int i) {
   int i0 			= 	region32->Regions[i+1].i0;//hauteur debut
   int i1 			= 	region32->i1;//hauteur fin
   int j0 			= 	region32->j0;//largeur debut
@@ -449,11 +446,6 @@ void LabelRosenfeld::merger8C(Region32* region32, int i) {
 
         r4 = FindRoot(region32->T, e4);
         epsillon = ui32MinNonNul2(r2, r4);
-
-        //CODE INUTILE ?
-        /*if (e1 && e1 != epsillon) SetRoot(region32->T, e1, epsillon);
-        else if (e2 && e2 != epsillon) SetRoot(region32->T, e2, epsillon);
-        else if (e3 && e3 != epsillon) SetRoot(region32->T, e3, epsillon);*/
         if (e4 != epsillon) SetRoot(region32->T, e4, epsillon);
         region32->E[i0][j] = epsillon;
       }
@@ -478,7 +470,7 @@ void LabelRosenfeld::labeliseParallele4C(Region32& region32) {
   std::vector<std::thread> myThreadsLigne;
   //lancement des threads pour l'etiquetage
   for(int nbRegion=0;nbRegion<region32.Regions.size();nbRegion++){
-    myThreads.push_back(std::thread(&LabelRosenfeld::bar, this, &region32.Regions[nbRegion]));
+    myThreads.push_back(std::thread(&LabelRosenfeld::labeliseThread4C, this, &region32.Regions[nbRegion]));
   }
 
   region32.ne = 0;
@@ -512,7 +504,7 @@ void LabelRosenfeld::labeliseParallele4C(Region32& region32) {
   //parcourir la ligne
   //s'il y a un pixelon regarde en haut/*
   for(int i = 0; i < region32.Regions.size()-1; i++){
-    myThreadsLigne.push_back(std::thread(&LabelRosenfeld::merger4C, this, &region32, i));
+    myThreadsLigne.push_back(std::thread(&LabelRosenfeld::lignedif4C, this, &region32, i));
   }
   for(int nbRegion = 0; nbRegion < region32.Regions.size()-1; nbRegion++){
     myThreadsLigne[nbRegion].join();
@@ -537,7 +529,7 @@ void LabelRosenfeld::labeliseParallele8C(Region32& region32) {
   std::vector<std::thread> myThreadsLigne;
   //lancement des threads pour l'etiquetage
   for(int nbRegion=0;nbRegion<region32.Regions.size();nbRegion++){
-    myThreads.push_back(std::thread(&LabelRosenfeld::bar8C, this, &region32.Regions[nbRegion]));
+    myThreads.push_back(std::thread(&LabelRosenfeld::labeliseThread8C, this, &region32.Regions[nbRegion]));
   }
 
   region32.ne = 0;
@@ -571,7 +563,7 @@ void LabelRosenfeld::labeliseParallele8C(Region32& region32) {
   //parcourir la ligne
   //s'il y a un pixelon regarde en haut/*
   for(int i = 0; i < region32.Regions.size()-1; i++){
-    myThreadsLigne.push_back(std::thread(&LabelRosenfeld::merger8C, this, &region32, i));
+    myThreadsLigne.push_back(std::thread(&LabelRosenfeld::lignedif8C, this, &region32, i));
   }
   for(int nbRegion = 0; nbRegion < region32.Regions.size()-1; nbRegion++){
     myThreadsLigne[nbRegion].join();

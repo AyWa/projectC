@@ -35,10 +35,10 @@ protected :
     uint32_t lineLabeling8C(unsigned char **X, int i, uint32_t **E, uint32_t* T, int largeur, uint32_t ne);
 
 public :
-    void bar(Region32* region32);
-    void bar8C(Region32* region32);
-    void merger4C(Region32* region32,int i);
-    void merger8C(Region32* region32,int i);
+    void labeliseThread4C(Region32* region32);
+    void labeliseThread8C(Region32* region32);
+    void lignedif4C(Region32* region32,int i);
+    void lignedif8C(Region32* region32,int i);
     /* Fonctions */
     /* Constructeur par defaut */
     LabelRosenfeld();
