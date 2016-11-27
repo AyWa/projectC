@@ -78,7 +78,7 @@ uint32_t LabelRosenfeld::solvePackTable(uint32_t* T, uint32_t ne) {
     uint32_t e;
     uint32_t na; // ancetre packe
 
-    na = 0;   std::cout << "yolo: "<<ne << '\n';
+    na = 0;
     for (e=1; e<=ne; e++) {
         if (e != T[e]) {
             T[e] = T[T[e]];
@@ -433,7 +433,6 @@ void LabelRosenfeld::labeliseParallele4C(Region32& region32) {
   for(int nbRegion=0;nbRegion<region32.Regions.size();nbRegion++){
     myThreads[nbRegion].join();
     region32.ne+=region32.Regions[nbRegion].ne;
-    std::cout << "Regions " << nbRegion << " -> " << region32.Regions[nbRegion].ne<< '\n';
   }
   //build le region32 ne
   region32.initialiseTables(region32.ne);
@@ -443,7 +442,6 @@ void LabelRosenfeld::labeliseParallele4C(Region32& region32) {
       region32.T[i+tmp3] = region32.Regions[j].T[i]+tmp3;
     }
     tmp3+=region32.Regions[j].ne;
-    std::cout << '\n';
   }
 
   int shift = region32.Regions[0].ne;
