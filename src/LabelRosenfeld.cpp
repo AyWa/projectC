@@ -78,15 +78,13 @@ uint32_t LabelRosenfeld::solvePackTable(uint32_t* T, uint32_t ne) {
     uint32_t e;
     uint32_t na; // ancetre packe
 
-    na = 0;
-    std::cout << "yolo: "<<ne << '\n';
+    na = 0;   std::cout << "yolo: "<<ne << '\n';
     for (e=1; e<=ne; e++) {
         if (e != T[e]) {
             T[e] = T[T[e]];
         } else {
             T[e] = ++na;
         }
-        //std::cout << e << std::endl;
     }
     return na;
 }
@@ -310,6 +308,7 @@ void LabelRosenfeld::labeliseSequetiel4C(Region32& region32) {
     /* Declaration des variables */
     int i;
     uint32_t ne;
+
     int i0 			= 	region32.i0;
     int i1 			= 	region32.i1;
     int j0 			= 	region32.j0;
@@ -333,7 +332,7 @@ void LabelRosenfeld::labeliseSequetiel4C(Region32& region32) {
      updateLabel(region32.E, i0, i1, j0, j1, region32.T);
     //
     // /* M�morisation du nombre d'�tiquettes */
-    // region32.ne = ne;
+     region32.ne = ne; ///////////////////////////////////////////////////////
 }
 void LabelRosenfeld::labeliseSequetiel8C(Region32& region32) {
 
@@ -384,7 +383,8 @@ void LabelRosenfeld::bar(Region32* region32)
       region32->ne = lineLabeling4C(region32->X, i, region32->E, region32->T, largeur, region32->ne);
   }
 }
-void LabelRosenfeld::yolo(Region32* region32,int i)
+
+void LabelRosenfeld::yolo(Region32* region32, int i)
 {
   int i0 			= 	region32->Regions[i+1].i0;//hauteur debut
   int i1 			= 	region32->i1;//hauteur fin
@@ -400,7 +400,7 @@ void LabelRosenfeld::yolo(Region32* region32,int i)
         r2 = FindRoot(region32->T, e2);
         r4 = FindRoot(region32->T, e4);
         epsillon = ui32MinNonNul2(r2, r4);
-        //std::cout << "r2 "<<r2<<" r4 "<<r4<<" epsi "<<epsillon << '\n';
+
         if (e2 != epsillon) SetRoot(region32->T, e2, epsillon);
         if (e4 != epsillon) SetRoot(region32->T, e4, epsillon);
         region32->E[i0][j] = epsillon;
@@ -425,35 +425,45 @@ void LabelRosenfeld::labeliseParallele4C(Region32& region32) {
   std::vector<std::thread> myThreadsLigne;
   //lancement des threads pour l'etiquetage
   for(int nbRegion=0;nbRegion<region32.Regions.size();nbRegion++){
-    myThreads.push_back(std::thread(&LabelRosenfeld::bar,this,&region32.Regions[nbRegion]));
+    myThreads.push_back(std::thread(&LabelRosenfeld::bar, this, &region32.Regions[nbRegion]));
   }
+
   region32.ne = 0;
   //on join les threads et builds le ne total
   for(int nbRegion=0;nbRegion<region32.Regions.size();nbRegion++){
     myThreads[nbRegion].join();
     region32.ne+=region32.Regions[nbRegion].ne;
-    std::cout << region32.Regions[nbRegion].ne<< '\n';
+    std::cout << "Regions " << nbRegion << " -> " << region32.Regions[nbRegion].ne<< '\n';
   }
   //build le region32 ne
   region32.initialiseTables(region32.ne);
   int tmp3=0; //variable pour incrementer les ne
-  for(int j=0;j<region32.Regions.size();j++){
-    for(int tmp=1;tmp<=region32.Regions[j].ne;tmp++){
-      //updateTable(region32.T,tmp+tmp3,region32.Regions[j].T[tmp]+tmp3);
-      region32.T[tmp+tmp3]=region32.Regions[j].T[tmp]+tmp3;
+  for(int j = 0; j < region32.Regions.size(); j++) {
+    for(int i = 1; i <= region32.Regions[j].ne; i++) {
+      region32.T[i+tmp3] = region32.Regions[j].T[i]+tmp3;
     }
     tmp3+=region32.Regions[j].ne;
+    std::cout << '\n';
   }
+
+  int shift = region32.Regions[0].ne;
+  for (int nbRegion = 1; nbRegion < region32.Regions.size(); nbRegion++) {
+    for (int i = region32.Regions[nbRegion].i0; i < region32.Regions[nbRegion].i1; i++) {
+        for (int j = region32.Regions[nbRegion].j0; j < region32.Regions[nbRegion].j1; j++) {
+          if(region32.Regions[nbRegion].E[i][j]) region32.Regions[nbRegion].E[i][j] += shift;
+        }
+    }
+    shift += region32.Regions[nbRegion].ne;
+  }
+
   //probleme de ligne
   //update region32.T
   //parcourir la ligne
   //s'il y a un pixelon regarde en haut
-  int e2,e4=0;
-  int r2,r4,epsillon=0;
-  for(int i=0;i<region32.Regions.size()-1;i++){
-    myThreadsLigne.push_back(std::thread(&LabelRosenfeld::yolo,this,&region32,i));
+  for(int i = 0; i < region32.Regions.size()-1; i++){
+    myThreadsLigne.push_back(std::thread(&LabelRosenfeld::yolo, this, &region32, i));
   }
-  for(int nbRegion=0;nbRegion<region32.Regions.size()-1;nbRegion++){
+  for(int nbRegion = 0; nbRegion < region32.Regions.size()-1; nbRegion++){
     myThreadsLigne[nbRegion].join();
   }
   region32.neFinal = solvePackTable(region32.T, region32.ne);
