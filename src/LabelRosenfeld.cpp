@@ -384,8 +384,23 @@ void LabelRosenfeld::bar(Region32* region32)
   }
 }
 
-void LabelRosenfeld::yolo(Region32* region32, int i)
+void LabelRosenfeld::bar8C(Region32* region32)
 {
+  int i0 			= 	region32->i0;//hauteur debut
+  int i1 			= 	region32->i1;//hauteur fin
+  int j0 			= 	region32->j0;//largeur debut
+  int j1 			= 	region32->j1;//largeur fin
+  int largeur 	= 	j1-j0; //largeur
+  region32->cleanRegions32();
+  region32->ne=0;
+  region32->ne = line0Labeling8C(region32->X, region32->i0, region32->E, region32->T, largeur, region32->ne);
+  //nos thread pour gerer chaque region
+  for (int i=region32->i0+1; i<region32->i1; i++) {
+      region32->ne = lineLabeling8C(region32->X, i, region32->E, region32->T, largeur, region32->ne);
+  }
+}
+
+void LabelRosenfeld::merger4C(Region32* region32, int i) {
   int i0 			= 	region32->Regions[i+1].i0;//hauteur debut
   int i1 			= 	region32->i1;//hauteur fin
   int j0 			= 	region32->j0;//largeur debut
@@ -402,12 +417,50 @@ void LabelRosenfeld::yolo(Region32* region32, int i)
         epsillon = ui32MinNonNul2(r2, r4);
 
         if (e2 != epsillon) SetRoot(region32->T, e2, epsillon);
+        //if (e4 != epsillon) SetRoot(region32->T, e4, epsillon); //CODE INUTILE ?
+        region32->E[i0][j] = epsillon;
+      }
+    }
+  }
+}
+
+void LabelRosenfeld::merger8C(Region32* region32, int i) {
+  int i0 			= 	region32->Regions[i+1].i0;//hauteur debut
+  int i1 			= 	region32->i1;//hauteur fin
+  int j0 			= 	region32->j0;//largeur debut
+  int j1 			= 	region32->j1;//largeur fin
+  int largeur 	= 	j1-j0; //largeur
+  int epsillon, e1 = 0, e2 = 0, e3 = 0, e4 = 0, r2, r4;
+  for(int j=0;j<largeur;j++) {
+    e4 = region32->Regions[i+1].E[i0][j];
+    if(e4){
+      if (j > 0) e1=region32->Regions[i].E[i0-1][j-1];
+      else e1 = 0;
+
+      e2=region32->Regions[i].E[i0-1][j];
+
+      if (j < largeur-1) e3=region32->Regions[i].E[i0-1][j+1];
+      else e3 = 0;
+
+      if(e1 || e2 || e3){
+        if (e1)  r2 = FindRoot(region32->T, e1);
+        else if (e2) r2 = FindRoot(region32->T, e2);
+        else if (e3) r2 = FindRoot(region32->T, e3);
+
+        r4 = FindRoot(region32->T, e4);
+        epsillon = ui32MinNonNul2(r2, r4);
+
+        //CODE INUTILE ?
+        /*if (e1 && e1 != epsillon) SetRoot(region32->T, e1, epsillon);
+        else if (e2 && e2 != epsillon) SetRoot(region32->T, e2, epsillon);
+        else if (e3 && e3 != epsillon) SetRoot(region32->T, e3, epsillon);*/
         if (e4 != epsillon) SetRoot(region32->T, e4, epsillon);
         region32->E[i0][j] = epsillon;
       }
     }
   }
 }
+
 
 /* Labelise en parall�le */
 void LabelRosenfeld::labeliseParallele4C(Region32& region32) {
@@ -457,9 +510,9 @@ void LabelRosenfeld::labeliseParallele4C(Region32& region32) {
   //probleme de ligne
   //update region32.T
   //parcourir la ligne
-  //s'il y a un pixelon regarde en haut
+  //s'il y a un pixelon regarde en haut/*
   for(int i = 0; i < region32.Regions.size()-1; i++){
-    myThreadsLigne.push_back(std::thread(&LabelRosenfeld::yolo, this, &region32, i));
+    myThreadsLigne.push_back(std::thread(&LabelRosenfeld::merger4C, this, &region32, i));
   }
   for(int nbRegion = 0; nbRegion < region32.Regions.size()-1; nbRegion++){
     myThreadsLigne[nbRegion].join();
@@ -470,34 +523,60 @@ void LabelRosenfeld::labeliseParallele4C(Region32& region32) {
 }
 
 void LabelRosenfeld::labeliseParallele8C(Region32& region32) {
+  /* Declaration des variables */
+  int i;
+  uint32_t ne;// nombre de label different
+  uint32_t *ne_threads; //nombre de label thread
+  int i0 			= 	region32.i0;//hauteur debut
+  int i1 			= 	region32.i1;//hauteur fin
+  int j0 			= 	region32.j0;//largeur debut
+  int j1 			= 	region32.j1;//largeur fin
+  int largeur 	= 	j1-j0; //largeur
+  region32.cleanRegions32();
+  std::vector<std::thread> myThreads;
+  std::vector<std::thread> myThreadsLigne;
+  //lancement des threads pour l'etiquetage
+  for(int nbRegion=0;nbRegion<region32.Regions.size();nbRegion++){
+    myThreads.push_back(std::thread(&LabelRosenfeld::bar8C, this, &region32.Regions[nbRegion]));
+  }
 
-      /* Declaration des variables */
-      int i;
-      uint32_t ne;
+  region32.ne = 0;
+  //on join les threads et builds le ne total
+  for(int nbRegion=0;nbRegion<region32.Regions.size();nbRegion++){
+    myThreads[nbRegion].join();
+    region32.ne+=region32.Regions[nbRegion].ne;
+  }
+  //build le region32 ne
+  region32.initialiseTables(region32.ne);
+  int tmp3=0; //variable pour incrementer les ne
+  for(int j = 0; j < region32.Regions.size(); j++) {
+    for(int i = 1; i <= region32.Regions[j].ne; i++) {
+      region32.T[i+tmp3] = region32.Regions[j].T[i]+tmp3;
+    }
+    tmp3+=region32.Regions[j].ne;
+  }
 
-      int i0 			= 	region32.i0;
-      int i1 			= 	region32.i1;
-      int j0 			= 	region32.j0;
-      int j1 			= 	region32.j1;
-      int largeur 	= 	j1-j0;
+  int shift = region32.Regions[0].ne;
+  for (int nbRegion = 1; nbRegion < region32.Regions.size(); nbRegion++) {
+    for (int i = region32.Regions[nbRegion].i0; i < region32.Regions[nbRegion].i1; i++) {
+        for (int j = region32.Regions[nbRegion].j0; j < region32.Regions[nbRegion].j1; j++) {
+          if(region32.Regions[nbRegion].E[i][j]) region32.Regions[nbRegion].E[i][j] += shift;
+        }
+    }
+    shift += region32.Regions[nbRegion].ne;
+  }
 
-      /* Netoyage des pr�c�dents traitements */
-      region32.cleanRegions32();
-
-      /* Premier etiquetage */
-      ne = 0;
-
-      ne = line0Labeling8C(region32.X, i0, region32.E, region32.T, largeur, ne);
-      for (i=i0+1; i<i1; i++) {
-          ne = lineLabeling8C(region32.X, i, region32.E, region32.T, largeur, ne);
-      }
-
-      /* R�solution des �quivalences */
-      region32.neFinal = solvePackTable(region32.T, ne);
-
-      /* Mise � jour sur l'image */
-      updateLabel(region32.E, i0, i1, j0, j1, region32.T);
-
-      /* M�morisation du nombre d'�tiquettes */
-      region32.ne = ne;
+  //probleme de ligne
+  //update region32.T
+  //parcourir la ligne
+  //s'il y a un pixelon regarde en haut/*
+  for(int i = 0; i < region32.Regions.size()-1; i++){
+    myThreadsLigne.push_back(std::thread(&LabelRosenfeld::merger8C, this, &region32, i));
+  }
+  for(int nbRegion = 0; nbRegion < region32.Regions.size()-1; nbRegion++){
+    myThreadsLigne[nbRegion].join();
+  }
+  region32.neFinal = solvePackTable(region32.T, region32.ne);
+  // /* Mise � jour sur l'image */
+  updateLabel(region32.E, i0, i1, j0, j1, region32.T);
 }

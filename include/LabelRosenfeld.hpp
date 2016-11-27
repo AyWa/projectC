@@ -36,7 +36,9 @@ protected :
 
 public :
     void bar(Region32* region32);
-    void yolo(Region32* region32,int i);
+    void bar8C(Region32* region32);
+    void merger4C(Region32* region32,int i);
+    void merger8C(Region32* region32,int i);
     /* Fonctions */
     /* Constructeur par defaut */
     LabelRosenfeld();
